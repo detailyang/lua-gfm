@@ -92,25 +92,44 @@ local to_emoji_dom = function(s)
     end
 end
 
+local register = {}
+local register_ref = function(name, src)
+
+    register[name] = src
+    return ""
+end
+
+local to_ref_src = function(name)
+    if register[name] then
+        return register[name]
+    else
+        return string.format("[%s]", name)
+    end
+end
+
 local grammer = P{
     "markdown";
     markdown = (V"h6" + V"h5" + V"h4"
                 + V"h3" + V"h2" + V"h1"
                 + V"lists" + V"blockquote"
-                + V"codeblock" + V"tables" + V"p" + V"nl") ^ 0,
+                + V"codeblock" + V"tables" + V"refreg" + V"p" + V"nl") ^ 0,
     nl = P"\r" ^ -1 * P"\n",
     w = S"\t ",
     leastw = V"w" ^ 1,
-    p = V"em" + V"image" + V"link" + V"inlinecode" + V"emoji",
+    p = V"em" + V"image" + V"link" + V"inlinecode" + V"emoji" + V"ref",
     emoji = Ct(C":" * C((1 - P":")^1) * C":") / table_concat / to_emoji_dom,
     em = V"strongw" + V"strong_" + V"emw" + V"em_",
     emw =  Ct(P"*" * Cc"<em>" * C((1 - P"*" - V"nl") ^ 1) * Cc"</em>" * P"*") / table_concat,
     em_ =  Ct(P"_" * Cc"<em>" * C((1 - P"_" - V"nl") ^ 1) * Cc"</em>" * P"_") / table_concat,
     strongw =  Ct(P"**" * Cc"<strong>" * C((1 - P"**" - V"nl") ^ 1) * Cc"</strong>" * P"**") / table_concat,
     strong_ =  Ct(P"__" * Cc"<strong>" * C((1 - P"__" - V"nl") ^ 1) * Cc"</strong>" * P"__") / table_concat,
-    image = (P("!") * P"[" * C((1 - P"]") ^ 1) * P"]" * P"(" * C((1 - P")") ^ 1) * P")") / to_image_dom,
-    link = (P"[" * C((1 - P"]") ^ 1) * P"]" * P"(" * C((1 - P")") ^ 1) * P")") / to_link_dom,
+    _image = (P("!") * P"[" * C((1 - P"]") ^ 1) * P"]" * P"(" * C((1 - P")") ^ 1) * P")"),
+    image = V"_image" / to_image_dom,
+    _link = (P"[" * C((1 - P"]") ^ 1) * P"]" * P"(" * C((1 - P")") ^ 1) * P")"),
+    link = V"_link" / to_link_dom,
+    ref = P"[" * (C((1 - P"]") ^ 1) / to_ref_src) * P"]",
     inlinecode = Ct(P"`" * Cc"<code>" * C((1 - P"`") ^ 0) * Cc"</code>" * P"`") / table_concat,
+    refreg = C((R"az" + R"AZ" + R"09") ^ 1) * P":" * V"w" ^ 0 * (V"image" + V"link") / register_ref * V"nl",
     h1 = to_header_dom(1),
     h2 = to_header_dom(2),
     h3 = to_header_dom(3),
@@ -148,6 +167,11 @@ local s = [==[
 `abcd
 sdfsfd`
 :laughing::smile:
+Format: ![Alt Text](url)
+Formata: [Alt Text](url)
+
+[Format]
+[Formata]
 ]==]
 local t = Ct(grammer):match(s)
 
