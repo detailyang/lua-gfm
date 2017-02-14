@@ -70,15 +70,34 @@ local to_td_dom = function(s)
 end
 
 
+local to_image_dom = function(a, b)
+   return string.format([=[<img src="%s" alt="%s"/>]=], a, b)
+end
+
+
+local to_link_dom = function(a, b)
+    return string.format([=[<a src="%s" alt="%s">%s</a>]=], a, a, b)
+end
+
+
 local grammer = P{
     "markdown";
     markdown = (V"h6" + V"h5" + V"h4"
                 + V"h3" + V"h2" + V"h1"
                 + V"lists" + V"blockquote"
-                + V"codeblock" + V"tables" + V"nl") ^ 0,
+                + V"codeblock" + V"tables" + V"p" + V"nl") ^ 0,
     nl = P"\r" ^ -1 * P"\n",
     w = S"\t ",
     leastw = V"w" ^ 1,
+    p = V"em" + V"image" + V"link" + V"inlinecode",
+    em = V"strongw" + V"strong_" + V"emw" + V"em_",
+    emw =  Ct(P"*" * Cc"<em>" * C((1 - P"*" - V"nl") ^ 1) * Cc"</em>" * P"*") / table_concat,
+    em_ =  Ct(P"_" * Cc"<em>" * C((1 - P"_" - V"nl") ^ 1) * Cc"</em>" * P"_") / table_concat,
+    strongw =  Ct(P"**" * Cc"<strong>" * C((1 - P"**" - V"nl") ^ 1) * Cc"</strong>" * P"**") / table_concat,
+    strong_ =  Ct(P"__" * Cc"<strong>" * C((1 - P"__" - V"nl") ^ 1) * Cc"</strong>" * P"__") / table_concat,
+    image = (P("!") * P"[" * C((1 - P"]") ^ 1) * P"]" * P"(" * C((1 - P")") ^ 1) * P")") / to_image_dom,
+    link = (P"[" * C((1 - P"]") ^ 1) * P"]" * P"(" * C((1 - P")") ^ 1) * P")") / to_link_dom,
+    inlinecode = Ct(P"`" * Cc"<code>" * C((1 - P"`") ^ 0) * Cc"</code>" * P"`") / table_concat,
     h1 = to_header_dom(1),
     h2 = to_header_dom(2),
     h3 = to_header_dom(3),
@@ -111,10 +130,10 @@ local grammer = P{
 
 
 local s = [==[
-First Header|Second Header
-------------|-------------
-Content from cell 1|Content from cell 2
-Content in the first column|Content in the second column
+*b***defg****abcd**![GitHub Logo](/images/logo.png)
+[GitHub](http://github.com)
+`abcd
+sdfsfd`
 ]==]
 local t = Ct(grammer):match(s)
 
