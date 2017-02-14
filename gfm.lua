@@ -14,6 +14,11 @@ local Cmt = lpeg.Cmt
 local match = lpeg.match
 local sf = string.format
 
+--TODO: add more emoji map
+local emoji = {
+    [":laughing:"] = '😄',
+    [":smile:"] = '😆'
+}
 
 local to_header_dom = function(n)
     return function(s)
@@ -79,6 +84,13 @@ local to_link_dom = function(a, b)
     return string.format([=[<a src="%s" alt="%s">%s</a>]=], a, a, b)
 end
 
+local to_emoji_dom = function(s)
+    if emoji[s] then
+        return emoji[s]
+    else
+        return s
+    end
+end
 
 local grammer = P{
     "markdown";
@@ -89,7 +101,8 @@ local grammer = P{
     nl = P"\r" ^ -1 * P"\n",
     w = S"\t ",
     leastw = V"w" ^ 1,
-    p = V"em" + V"image" + V"link" + V"inlinecode",
+    p = V"em" + V"image" + V"link" + V"inlinecode" + V"emoji",
+    emoji = Ct(C":" * C((1 - P":")^1) * C":") / table_concat / to_emoji_dom,
     em = V"strongw" + V"strong_" + V"emw" + V"em_",
     emw =  Ct(P"*" * Cc"<em>" * C((1 - P"*" - V"nl") ^ 1) * Cc"</em>" * P"*") / table_concat,
     em_ =  Ct(P"_" * Cc"<em>" * C((1 - P"_" - V"nl") ^ 1) * Cc"</em>" * P"_") / table_concat,
@@ -109,7 +122,7 @@ local grammer = P{
     ui = P"*" * V"leastw" * Ct(Cc"<li>" * C((1 - V"nl") ^ 1) * Cc"</li>") / table_concat,
     ol = Ct(Cc"<ol>" * (V"oi" * V"nl")^ 1 * Cc"</ol>") / table_concat,
     oi = R"09"^1 * P"." * V"leastw" * Ct(Cc"<li>" * C((1 - V"nl") ^ 1) * Cc"</li>") / table_concat,
-    tl = Ct(Cc"<ul>" * (V"ti" * V"nl") ^ 1 * Cc"</ul>") /table_concat,
+    tl = Ct(Cc"<ul>" * (V"ti" * V"nl") ^ 1 * Cc"</ul>") / table_concat,
     ti = V"titodo" + V"tidone",
     titodo = P"-" * V"leastw" * P"[ ]" * Ct(Cc"<li><input checked=\"false\">"
                   * C(P(1 - V"nl") ^ 0) * Cc"</li>") / table_concat,
@@ -134,6 +147,7 @@ local s = [==[
 [GitHub](http://github.com)
 `abcd
 sdfsfd`
+:laughing::smile:
 ]==]
 local t = Ct(grammer):match(s)
 
