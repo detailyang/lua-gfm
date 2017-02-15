@@ -84,6 +84,7 @@ local to_link_dom = function(a, b)
     return string.format([=[<a src="%s" alt="%s">%s</a>]=], a, a, b)
 end
 
+
 local to_emoji_dom = function(s)
     if emoji[s] then
         return emoji[s]
@@ -92,6 +93,7 @@ local to_emoji_dom = function(s)
     end
 end
 
+
 local register = {}
 local register_ref = function(name, src)
 
@@ -99,12 +101,22 @@ local register_ref = function(name, src)
     return ""
 end
 
+
 local to_ref_src = function(name)
     if register[name] then
         return register[name]
     else
         return string.format("[%s]", name)
     end
+end
+
+
+local to_space = function()
+    return " "
+end
+
+local to_nl = function()
+    return "\n"
 end
 
 local grammer = P{
@@ -116,7 +128,8 @@ local grammer = P{
     nl = P"\r" ^ -1 * P"\n",
     w = S"\t ",
     leastw = V"w" ^ 1,
-    p = V"em" + V"image" + V"link" + V"inlinecode" + V"emoji" + V"ref",
+    p = V"em" + V"image" + V"link" + V"inlinecode" + V"emoji" + V"ref" + V"emptyline" + C((1 - V"nl") ^ 1) + V"nl" / to_space,
+    emptyline = C(V"nl" * V"nl") + (P"  " * V"nl") / to_nl,
     emoji = Ct(C":" * C((1 - P":")^1) * C":") / table_concat / to_emoji_dom,
     em = V"strongw" + V"strong_" + V"emw" + V"em_",
     emw =  Ct(P"*" * Cc"<em>" * C((1 - P"*" - V"nl") ^ 1) * Cc"</em>" * P"*") / table_concat,
@@ -162,16 +175,12 @@ local grammer = P{
 
 
 local s = [==[
-*b***defg****abcd**![GitHub Logo](/images/logo.png)
-[GitHub](http://github.com)
-`abcd
-sdfsfd`
-:laughing::smile:
-Format: ![Alt Text](url)
-Formata: [Alt Text](url)
+123
+456
 
-[Format]
-[Formata]
+789123
+
+123
 ]==]
 local t = Ct(grammer):match(s)
 
